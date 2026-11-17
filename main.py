@@ -14,9 +14,11 @@ roughly flat or decays. So instead of one pooled curve, this program
 conditions on launch size: for the case at hand it takes the K
 comparable past launches whose hour-1 viewer count is closest in log
 space to this case's hour-1 print, and reads each hour's shape off
-them -- the mean of their log-ratios log(viewers_h / viewers_1) as the
-centre, and the standard deviation of those log-ratios as the spread.
-Quantiles are then
+them -- the trimmed mean of their log-ratios log(viewers_h /
+viewers_1), dropping the smallest and largest, as the centre, and the
+standard deviation of those log-ratios as the spread. Trimming keeps
+one unusual launch (a different unlock pattern, a data gap) from
+dragging an hour's centre. Quantiles are then
 
     q_tau(h) = p1 * exp(centre_h + z_tau * spread_h)
 
@@ -46,7 +48,7 @@ LEVELS = [0.05, 0.25, 0.5, 0.75, 0.95]
 Z = [-1.645, -0.674, 0.0, 0.674, 1.645]
 
 # How many size-nearest comparable launches shape each hour.
-K_NEIGHBOURS = 8
+K_NEIGHBOURS = 12
 # Narrowest spread allowed, in natural-log units (guards a degenerate
 # neighbour set that happens to agree exactly).
 SPREAD_FLOOR = 0.10
@@ -108,6 +110,17 @@ def _mean_sd(values):
     return mean, math.sqrt(var)
 
 
+def _centre(ratios):
+    """Trimmed mean of log-ratios: drop the extremes, average the rest.
+
+    With three ratios this is the middle one; with more it averages the
+    core, so one launch with a strange hour cannot move the centre.
+    """
+    ordered = sorted(ratios)
+    core = ordered[1:-1] if len(ordered) > 2 else ordered
+    return sum(core) / len(core)
+
+
 def _hour_quantiles(p1, curves, hour):
     """Five quantiles for one hour from size-nearest comparables."""
     log_p1 = math.log(p1)
@@ -118,7 +131,8 @@ def _hour_quantiles(p1, curves, hour):
     for pool in (ranked[:K_NEIGHBOURS], ranked):
         ratios = [math.log(c[hour] / c[1]) for c in pool if hour in c]
         if len(ratios) >= 3:
-            centre, spread = _mean_sd(ratios)
+            centre = _centre(ratios)
+            _, spread = _mean_sd(ratios)
             spread = max(spread, SPREAD_FLOOR)
             return [p1 * math.exp(centre + z * spread) for z in Z]
     # Too little comparable data for this hour: persistence fallback.

@@ -18,11 +18,11 @@ A launch's audience curve depends strongly on how big its first hour
 already is: a category that opens near-empty at 00:00 UTC typically
 grows many-fold as unlocks roll across time zones, while a category
 that opens huge stays roughly flat or decays. So the forecast conditions
-on launch size: for each hour it takes the 8 comparable past launches
+on launch size: for each hour it takes the 12 comparable past launches
 whose hour-1 viewer count is closest in log space to this case's hour-1
-print, and uses the mean of their log-ratios `log(viewers_h /
-viewers_1)` as the centre and the standard deviation of those
-log-ratios as the spread:
+print, and uses the trimmed mean of their log-ratios `log(viewers_h /
+viewers_1)` (dropping the smallest and largest) as the centre and the
+standard deviation of those log-ratios as the spread:
 
 ```
 q_tau(h) = p1 * exp(centre_h + z_tau * spread_h)
@@ -40,8 +40,8 @@ On the four practice launches (Marvel's Wolverine, Red Dead Redemption
 SullyGnome hourly averages with the competition's pinball loss:
 
 - house persistence baseline: loss 0.387
-- this program: loss 0.224 (leave-one-out on 37 comparable launches:
-  0.416 vs baseline 0.930)
+- this program: loss 0.227 (leave-one-out on 37 comparable launches,
+  big launches only: 0.210 vs baseline 0.251)
 
 The program is deterministic (two runs write byte-identical output),
 offline, and reads nothing outside its input directory.
